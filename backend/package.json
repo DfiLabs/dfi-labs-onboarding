@@ -1,0 +1,22 @@
+{
+  "name": "dfi-labs-onboarding-backend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.637.0",
+    "@aws-sdk/s3-request-presigner": "^3.637.0",
+    "@aws-sdk/client-sesv2": "^3.637.0",
+    "@aws-sdk/util-create-request": "^3.609.0",
+    "@aws-sdk/s3-presigned-post": "^3.637.0",
+    "uuid": "^9.0.1",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.23.0",
+    "typescript": "^5.6.2"
+  },
+  "scripts": {
+    "build": "esbuild presign/index.ts --bundle --platform=node --outfile=presign/index.js && esbuild submit/index.ts --bundle --platform=node --outfile=submit/index.js"
+  }
+}
