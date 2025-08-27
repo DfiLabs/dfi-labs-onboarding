@@ -1,0 +1,52 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: !Sub "'${AllowedOrigins}'"
+
+  PresignFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: presign/
+      Handler: index.handler
+      Events:
+        Presign:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /presign
+            Method: post
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref BucketName
+
+  SubmitFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: submit/
+      Handler: index.handler
+      Events:
+        Submit:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /submit
+            Method: post
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref BucketName
+        - Statement:
+          - Effect: Allow
+            Action:
+              - ses:SendEmail
+              - ses:SendRawEmail
+            Resource: '*'
+
+Outputs:
+  ApiUrl:
+    Value: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/prod"
