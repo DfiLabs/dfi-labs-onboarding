@@ -1,4 +1,4 @@
-export const API_BASE = import.meta.env.VITE_API_BASE as string // e.g., https://...execute-api.../prod
+export const API_BASE = import.meta.env.VITE_API_BASE as string
 
 export async function presign(file: File, category: string, inviteToken?: string){
   const body: any = { filename: file.name, contentType: file.type, category }

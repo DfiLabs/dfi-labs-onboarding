@@ -31,6 +31,7 @@ export default function App(){
   const [status, setStatus] = useState<'idle'|'uploading'|'done'|'error'>('idle')
   const [msg, setMsg] = useState('')
 
+  // OPEN MODE: token is optional
   const token = getInviteToken() || ''
   const cats = useMemo(()=> type==='individual'? CATEGORIES_INDIV : CATEGORIES_ENTITY, [type])
 
@@ -67,7 +68,7 @@ export default function App(){
       await submit(payload)
       setStatus('done'); setMsg('Submitted. We’ll be in touch soon.')
     }catch(err:any){
-      setStatus('error'); setMsg(err.message || 'Submission failed')
+      setStatus('error'); setMsg(err?.message || 'Submission failed')
     }
   }
 
