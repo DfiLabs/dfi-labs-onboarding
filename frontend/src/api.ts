@@ -1,9 +1,11 @@
-export const API_BASE = import.meta.env.VITE_API_BASE as string // e.g., https://abc123.execute-api.eu-west-3.amazonaws.com/prod
+export const API_BASE = import.meta.env.VITE_API_BASE as string // e.g., https://...execute-api.../prod
 
-export async function presign(file: File, category: string, inviteToken: string){
+export async function presign(file: File, category: string, inviteToken?: string){
+  const body: any = { filename: file.name, contentType: file.type, category }
+  if (inviteToken) body.inviteToken = inviteToken
   const res = await fetch(`${API_BASE}/presign`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ filename: file.name, contentType: file.type, category, inviteToken })
+    body: JSON.stringify(body)
   })
   if(!res.ok) throw new Error(await res.text())
   return res.json() as Promise<{ url: string; key: string }>
