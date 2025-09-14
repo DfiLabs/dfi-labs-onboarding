@@ -454,6 +454,92 @@ async function generateDetailedReportPDF(summary: ScreeningSummary): Promise<Buf
     yPosition += 10
   }
   
+  // Databases Searched Section
+  if (yPosition > 200) {
+    doc.addPage()
+    yPosition = 20
+  }
+  
+  doc.setFontSize(14)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2])
+  doc.text('🔍 Databases Searched', 20, yPosition)
+  yPosition += 15
+  
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'normal')
+  
+  const databases = [
+    { category: 'Sanctions Lists', sources: ['UN Sanctions List', 'EU Sanctions List', 'US OFAC', 'UK HMT', 'OFAC Crypto Addresses'] },
+    { category: 'PEP Screening', sources: ['France RNE (Répertoire national des élus)', 'HATVP (Déclarations d\'intérêts)', 'European Parliament', 'OpenSanctions'] },
+    { category: 'Entity Registry', sources: ['France INSEE SIRENE', 'EU VIES VAT Validation', 'GLEIF LEI Lookup'] },
+    { category: 'Tax & Banking', sources: ['OECD TIN Format Validation', 'IBAN Checksum (mod-97)'] },
+    { category: 'Address Verification', sources: ['France BAN (Base Adresse Nationale)'] },
+    { category: 'Email & Domain', sources: ['DNS MX Record Check', 'WHOIS Domain Age', 'Domain Registration Status'] },
+    { category: 'IP & Geolocation', sources: ['IP Geolocation (ipapi.co)', 'ASN Lookup', 'Datacenter/VPN Detection'] },
+    { category: 'Adverse Media', sources: ['Official Regulator Press', 'Government Press Releases', 'NewsAPI Search', 'Targeted News Search'] },
+    { category: 'Wallet Verification', sources: ['OFAC Crypto Address Check', 'Proof of Control Verification'] }
+  ]
+  
+  for (const db of databases) {
+    if (yPosition > 250) {
+      doc.addPage()
+      yPosition = 20
+    }
+    
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(colors.accent[0], colors.accent[1], colors.accent[2])
+    doc.text(`${db.category}:`, 20, yPosition)
+    yPosition += 6
+    
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2])
+    for (const source of db.sources) {
+      if (yPosition > 250) {
+        doc.addPage()
+        yPosition = 20
+      }
+      doc.text(`• ${source}`, 25, yPosition)
+      yPosition += 5
+    }
+    yPosition += 5
+  }
+  
+  yPosition += 10
+  
+  // Search Methodology
+  if (yPosition > 200) {
+    doc.addPage()
+    yPosition = 20
+  }
+  
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2])
+  doc.text('📋 Search Methodology', 20, yPosition)
+  yPosition += 10
+  
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  const methodology = [
+    '• All searches performed using official public databases and APIs',
+    '• Name matching uses exact and fuzzy matching algorithms',
+    '• Date of birth and country information used for disambiguation',
+    '• Results include evidence screenshots and raw data where available',
+    '• All searches are logged with timestamps for audit purposes',
+    '• Database coverage includes international sanctions, PEP lists, and regulatory databases',
+    '• Search results are immutable and stored with WORM (Write-Once-Read-Many) protection'
+  ]
+  
+  for (const item of methodology) {
+    if (yPosition > 250) {
+      doc.addPage()
+      yPosition = 20
+    }
+    doc.text(item, 20, yPosition)
+    yPosition += 6
+  }
+  
   // Footer
   const pageCount = doc.getNumberOfPages()
   for (let i = 1; i <= pageCount; i++) {
