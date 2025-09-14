@@ -30,7 +30,10 @@ async function triggerScreening(caseId: string, record: any) {
     nationality: record.nationality,
     clientType: record.clientType,
     registrationNumber: record.registrationNumber,
-    email: record.email
+    email: record.email,
+    subscriptionBand: record.subscriptionBand,
+    subscriptionCurrency: record.subscriptionCurrency,
+    uboList: record.uboList
   }
 
   // This would be an internal Lambda invocation in production
@@ -46,7 +49,7 @@ export const handler = async (event: any) => {
       email, clientType, country, files, inviteToken, userAgent,
       // Universal fields
       fullLegalName, dateOfBirth, fullAddress, taxResidencyCountry, tin,
-      mobileNumber, pepStatus, pepDetails, subscriptionBand,
+      mobileNumber, pepStatus, pepDetails, subscriptionBand, subscriptionCurrency,
       // Individual fields
       nationality,
       // Entity fields
@@ -83,7 +86,7 @@ export const handler = async (event: any) => {
       id, email, clientType, country, files, submittedAt, userAgent,
       // Universal fields
       fullLegalName, dateOfBirth, fullAddress, taxResidencyCountry, tin,
-      mobileNumber, pepStatus, pepDetails, subscriptionBand,
+      mobileNumber, pepStatus, pepDetails, subscriptionBand, subscriptionCurrency,
       // Individual fields
       ...(clientType === 'individual' && { nationality }),
       // Entity fields

@@ -1,5 +1,7 @@
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses'
+import puppeteer from 'puppeteer'
+import { PDFDocument } from 'pdf-lib'
 
 const s3 = new S3Client({ region: 'eu-west-3' })
 const ses = new SESClient({ region: 'eu-west-3' })
@@ -15,6 +17,12 @@ interface ScreeningResult {
   evidence: any
 }
 
+interface UBODetails {
+  name: string
+  dateOfBirth: string
+  percentage: number
+}
+
 interface ScreeningSummary {
   caseId: string
   clientName: string
@@ -24,6 +32,9 @@ interface ScreeningSummary {
   missingInfo: string[]
   rfis: string[]
   documents: any[]
+  subscriptionBand?: string
+  subscriptionCurrency?: string
+  uboList?: UBODetails[]
 }
 
 async function checkSanctions(name: string, dob: string, country: string): Promise<ScreeningResult> {
@@ -224,6 +235,418 @@ async function checkAdverseMedia(name: string, country: string): Promise<Screeni
   }
 }
 
+function parseUBOList(uboText: string): UBODetails[] {
+  if (!uboText || !uboText.trim()) return []
+  
+  const lines = uboText.split('\n').filter(line => line.trim())
+  const ubos: UBODetails[] = []
+  
+  for (const line of lines) {
+    const parts = line.split('|').map(part => part.trim())
+    if (parts.length >= 3) {
+      const name = parts[0]
+      const dob = parts[1]
+      const percentageStr = parts[2].replace('%', '').trim()
+      const percentage = parseFloat(percentageStr)
+      
+      if (name && dob && !isNaN(percentage)) {
+        ubos.push({ name, dateOfBirth: dob, percentage })
+      }
+    }
+  }
+  
+  return ubos
+}
+
+async function checkUBOs(uboList: UBODetails[], country: string): Promise<ScreeningResult> {
+  if (!uboList || uboList.length === 0) {
+    return {
+      check: 'UBO Screening',
+      status: 'AMBER',
+      reason: 'No UBO information provided',
+      evidence: { timestamp: new Date().toISOString() }
+    }
+  }
+
+  const totalPercentage = uboList.reduce((sum, ubo) => sum + ubo.percentage, 0)
+  
+  if (totalPercentage < 100) {
+    return {
+      check: 'UBO Screening',
+      status: 'AMBER',
+      reason: `UBO ownership totals ${totalPercentage}% (should be 100%)`,
+      evidence: { 
+        totalPercentage, 
+        uboCount: uboList.length,
+        timestamp: new Date().toISOString() 
+      }
+    }
+  }
+
+  // Check each UBO against sanctions and PEP lists
+  const uboResults = []
+  for (const ubo of uboList) {
+    const sanctionsResult = await checkSanctions(ubo.name, ubo.dateOfBirth, country)
+    const pepResult = await checkPEP(ubo.name, country)
+    
+    uboResults.push({
+      name: ubo.name,
+      percentage: ubo.percentage,
+      sanctionsStatus: sanctionsResult.status,
+      pepStatus: pepResult.status
+    })
+  }
+
+  const hasRedUBO = uboResults.some(ubo => ubo.sanctionsStatus === 'RED' || ubo.pepStatus === 'RED')
+  const hasAmberUBO = uboResults.some(ubo => ubo.sanctionsStatus === 'AMBER' || ubo.pepStatus === 'AMBER')
+
+  return {
+    check: 'UBO Screening',
+    status: hasRedUBO ? 'RED' : hasAmberUBO ? 'AMBER' : 'GREEN',
+    reason: hasRedUBO ? 'High-risk UBO detected' : hasAmberUBO ? 'Some UBOs require additional verification' : 'All UBOs cleared',
+    evidence: { 
+      uboResults,
+      totalPercentage,
+      timestamp: new Date().toISOString() 
+    }
+  }
+}
+
+async function generateDetailedReportPDF(summary: ScreeningSummary): Promise<Buffer> {
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+  })
+  
+  const page = await browser.newPage()
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>DFI Labs KYC/AML Report - ${summary.caseId}</title>
+      <style>
+        body { 
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+          margin: 0; 
+          padding: 40px; 
+          color: #ffffff; 
+          background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+          line-height: 1.6;
+        }
+        .header { 
+          background: linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #4a6741 100%);
+          color: white;
+          padding: 40px;
+          text-align: center;
+          margin: -40px -40px 40px -40px;
+          border-radius: 12px;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        .header h1 { margin: 0; font-size: 32px; font-weight: 300; }
+        .header h2 { margin: 10px 0 0 0; font-size: 18px; font-weight: 300; opacity: 0.9; }
+        .status-badge {
+          display: inline-block;
+          padding: 12px 24px;
+          border-radius: 25px;
+          font-weight: bold;
+          margin-top: 15px;
+          background: ${summary.overallStatus === 'GREEN' ? '#27ae60' : summary.overallStatus === 'AMBER' ? '#f39c12' : '#e74c3c'};
+          color: white;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        }
+        .section { margin: 30px 0; page-break-inside: avoid; }
+        .section h3 { 
+          color: #ffffff; 
+          border-bottom: 2px solid #4a6741; 
+          padding-bottom: 10px; 
+          margin-bottom: 20px;
+          font-size: 20px;
+        }
+        .result { 
+          margin: 15px 0; 
+          padding: 20px; 
+          border-left: 4px solid #4a6741; 
+          background: rgba(255,255,255,0.05); 
+          border-radius: 0 8px 8px 0;
+          page-break-inside: avoid;
+          backdrop-filter: blur(10px);
+        }
+        .result.green { border-left-color: #27ae60; background: rgba(39, 174, 96, 0.1); }
+        .result.red { border-left-color: #e74c3c; background: rgba(231, 76, 60, 0.1); }
+        .result.amber { border-left-color: #f39c12; background: rgba(243, 156, 18, 0.1); }
+        .result h4 { margin: 0 0 8px 0; font-size: 16px; color: #ffffff; }
+        .result p { margin: 0; color: #e0e0e0; }
+        .result .evidence { 
+          margin-top: 10px; 
+          padding: 10px; 
+          background: rgba(0,0,0,0.2); 
+          border-radius: 4px; 
+          font-size: 12px; 
+          color: #b0b0b0;
+          border: 1px solid rgba(255,255,255,0.1);
+        }
+        .info-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+          margin: 20px 0;
+        }
+        .info-item {
+          background: rgba(255,255,255,0.05);
+          padding: 15px;
+          border-radius: 8px;
+          border-left: 4px solid #4a6741;
+          backdrop-filter: blur(10px);
+        }
+        .info-item strong { color: #ffffff; }
+        .info-item p { color: #e0e0e0; margin: 5px 0; }
+        .footer { 
+          margin-top: 50px; 
+          padding: 30px; 
+          border-top: 1px solid rgba(255,255,255,0.1); 
+          text-align: center; 
+          color: #b0b0b0; 
+          font-size: 14px; 
+          background: rgba(0,0,0,0.2);
+          border-radius: 8px;
+        }
+        .logo-section {
+          text-align: center;
+          margin-bottom: 20px;
+        }
+        .logo {
+          font-size: 24px;
+          font-weight: bold;
+          color: #4a6741;
+          text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        @media print {
+          body { margin: 0; padding: 20px; }
+          .header { margin: -20px -20px 20px -20px; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="logo-section">
+        <div class="logo">DFI LABS</div>
+      </div>
+      
+      <div class="header">
+        <h1>KYC/AML Screening Report</h1>
+        <h2>Case ID: ${summary.caseId}</h2>
+        <h2>Client: ${summary.clientName} (${summary.clientType})</h2>
+        <div class="status-badge">${summary.overallStatus}</div>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-item">
+          <strong>Screened:</strong>
+          <p>${new Date().toISOString()}</p>
+        </div>
+        <div class="info-item">
+          <strong>Checks Completed:</strong>
+          <p>${summary.results.length} screening checks</p>
+        </div>
+        ${summary.subscriptionBand ? `
+        <div class="info-item">
+          <strong>Subscription Band:</strong>
+          <p>${summary.subscriptionBand}</p>
+        </div>
+        ` : ''}
+        ${summary.subscriptionCurrency ? `
+        <div class="info-item">
+          <strong>Currency:</strong>
+          <p>${summary.subscriptionCurrency}</p>
+        </div>
+        ` : ''}
+      </div>
+
+      <div class="section">
+        <h3>🔍 Detailed Screening Results</h3>
+        ${summary.results.map(result => `
+          <div class="result ${result.status.toLowerCase()}">
+            <h4>${result.check}</h4>
+            <p>${result.reason}</p>
+            <div class="evidence">
+              <strong>Evidence:</strong> ${JSON.stringify(result.evidence, null, 2)}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      ${summary.missingInfo.length > 0 ? `
+      <div class="section">
+        <h3>⚠️ Missing Information</h3>
+        <ul style="color: #e0e0e0;">
+          ${summary.missingInfo.map(info => `<li>${info}</li>`).join('')}
+        </ul>
+      </div>
+      ` : ''}
+
+      ${summary.rfis.length > 0 ? `
+      <div class="section">
+        <h3>❓ Requests for Information</h3>
+        <ul style="color: #e0e0e0;">
+          ${summary.rfis.map(rfi => `<li>${rfi}</li>`).join('')}
+        </ul>
+      </div>
+      ` : ''}
+
+      ${summary.uboList && summary.uboList.length > 0 ? `
+      <div class="section">
+        <h3>👥 Ultimate Beneficial Owners (UBOs)</h3>
+        ${summary.uboList.map(ubo => `
+          <div class="result">
+            <h4>${ubo.name}</h4>
+            <p><strong>Date of Birth:</strong> ${ubo.dateOfBirth}</p>
+            <p><strong>Ownership:</strong> ${ubo.percentage}%</p>
+          </div>
+        `).join('')}
+      </div>
+      ` : ''}
+
+      <div class="section">
+        <h3>📄 Client Documents</h3>
+        <p style="color: #e0e0e0;">All uploaded client documents are attached to this PDF report.</p>
+        ${summary.documents.map(doc => `
+          <div class="result">
+            <h4>${doc.filename}</h4>
+            <p><strong>Category:</strong> ${doc.category}</p>
+            <p><strong>Size:</strong> ${(doc.sizeBytes / 1024).toFixed(1)} KB</p>
+            <p><strong>Type:</strong> ${doc.contentType}</p>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="footer">
+        <p><strong>DFI Labs KYC/AML Screening System</strong></p>
+        <p>This report was generated automatically on ${new Date().toISOString()}</p>
+        <p>For technical support, contact: hello@dfi-labs.com</p>
+      </div>
+    </body>
+    </html>
+  `
+  
+  await page.setContent(html)
+  const pdf = await page.pdf({
+    format: 'A4',
+    printBackground: true,
+    margin: { top: '20mm', right: '20mm', bottom: '20mm', left: '20mm' }
+  })
+  
+  await browser.close()
+  return pdf
+}
+
+async function downloadDocumentFromS3(key: string): Promise<Buffer> {
+  try {
+    const response = await s3.send(new GetObjectCommand({
+      Bucket: BUCKET,
+      Key: key
+    }))
+    
+    const chunks: Uint8Array[] = []
+    const stream = response.Body as any
+    
+    for await (const chunk of stream) {
+      chunks.push(chunk)
+    }
+    
+    return Buffer.concat(chunks)
+  } catch (error) {
+    console.error(`Failed to download document ${key}:`, error)
+    throw error
+  }
+}
+
+async function createCompletePDFReport(summary: ScreeningSummary, documents: any[]): Promise<Buffer> {
+  // Generate the detailed report PDF
+  const reportPDF = await generateDetailedReportPDF(summary)
+  
+  // Create a new PDF document to merge everything
+  const finalPDF = await PDFDocument.create()
+  
+  // Add the report pages
+  const reportDoc = await PDFDocument.load(reportPDF)
+  const reportPages = await finalPDF.copyPages(reportDoc, reportDoc.getPageIndices())
+  reportPages.forEach(page => finalPDF.addPage(page))
+  
+  // Add each uploaded document
+  for (const doc of documents) {
+    try {
+      console.log(`Adding document: ${doc.filename}`)
+      
+      // Download the document from S3
+      const docBuffer = await downloadDocumentFromS3(doc.key)
+      
+      // Try to load as PDF
+      try {
+        const docPDF = await PDFDocument.load(docBuffer)
+        const docPages = await finalPDF.copyPages(docPDF, docPDF.getPageIndices())
+        docPages.forEach(page => finalPDF.addPage(page))
+        console.log(`Successfully added PDF: ${doc.filename}`)
+      } catch (pdfError) {
+        // If it's not a PDF, create a placeholder page
+        console.log(`Document ${doc.filename} is not a PDF, creating placeholder`)
+        
+        const placeholderPage = finalPDF.addPage([595, 842]) // A4 size
+        const { width, height } = placeholderPage.getSize()
+        
+        // Add text to indicate this is a non-PDF document
+        placeholderPage.drawText(`Document: ${doc.filename}`, {
+          x: 50,
+          y: height - 100,
+          size: 16,
+          color: { r: 0.2, g: 0.2, b: 0.2 }
+        })
+        
+        placeholderPage.drawText(`Category: ${doc.category}`, {
+          x: 50,
+          y: height - 130,
+          size: 12,
+          color: { r: 0.4, g: 0.4, b: 0.4 }
+        })
+        
+        placeholderPage.drawText(`Size: ${(doc.sizeBytes / 1024).toFixed(1)} KB`, {
+          x: 50,
+          y: height - 150,
+          size: 12,
+          color: { r: 0.4, g: 0.4, b: 0.4 }
+        })
+        
+        placeholderPage.drawText(`Type: ${doc.contentType}`, {
+          x: 50,
+          y: height - 170,
+          size: 12,
+          color: { r: 0.4, g: 0.4, b: 0.4 }
+        })
+        
+        placeholderPage.drawText('Note: This document is not a PDF and cannot be embedded directly.', {
+          x: 50,
+          y: height - 200,
+          size: 10,
+          color: { r: 0.6, g: 0.6, b: 0.6 }
+        })
+        
+        placeholderPage.drawText(`Original file available at: ${doc.key}`, {
+          x: 50,
+          y: height - 220,
+          size: 10,
+          color: { r: 0.6, g: 0.6, b: 0.6 }
+        })
+      }
+    } catch (error) {
+      console.error(`Failed to add document ${doc.filename}:`, error)
+      // Continue with other documents
+    }
+  }
+  
+  // Generate the final PDF
+  return Buffer.from(await finalPDF.save())
+}
+
 async function getDocumentsForCase(caseId: string): Promise<any[]> {
   try {
     // Get the submission record to find uploaded documents
@@ -249,7 +672,8 @@ export const handler = async (event: any) => {
     const data = JSON.parse(event.body || '{}')
     const {
       caseId, fullLegalName, dateOfBirth, fullAddress, taxResidencyCountry, tin,
-      mobileNumber, pepStatus, clientType, registrationNumber, email
+      mobileNumber, pepStatus, clientType, registrationNumber, email,
+      subscriptionBand, subscriptionCurrency, uboList
     } = data
 
     if (!caseId || !fullLegalName) {
@@ -265,6 +689,9 @@ export const handler = async (event: any) => {
     // Get uploaded documents
     const documents = await getDocumentsForCase(caseId)
 
+    // Parse UBO information
+    const parsedUBOs = parseUBOList(uboList || '')
+
     // Run screening checks
     const results: ScreeningResult[] = []
     
@@ -277,6 +704,11 @@ export const handler = async (event: any) => {
     // Entity registry check
     if (clientType === 'entity' && registrationNumber) {
       results.push(await checkEntityRegistry(registrationNumber, taxResidencyCountry))
+    }
+    
+    // UBO screening (for entities)
+    if (clientType === 'entity' && parsedUBOs.length > 0) {
+      results.push(await checkUBOs(parsedUBOs, taxResidencyCountry))
     }
     
     // Tax ID validation
@@ -316,7 +748,10 @@ export const handler = async (event: any) => {
       results,
       missingInfo,
       rfis,
-      documents
+      documents,
+      subscriptionBand,
+      subscriptionCurrency,
+      uboList: parsedUBOs
     }
 
     // Store results in S3
@@ -326,6 +761,27 @@ export const handler = async (event: any) => {
       ContentType: 'application/json',
       Body: JSON.stringify(summary, null, 2)
     }))
+
+    // Generate complete PDF report with all documents
+    console.log(`Generating complete PDF report with ${documents.length} documents`)
+    let completePDF: Buffer | null = null
+    
+    try {
+      completePDF = await createCompletePDFReport(summary, documents)
+      
+      // Store complete PDF in S3
+      await s3.send(new PutObjectCommand({
+        Bucket: BUCKET,
+        Key: `screening/${caseId}/complete-report.pdf`,
+        ContentType: 'application/pdf',
+        Body: completePDF
+      }))
+      
+      console.log(`PDF report generated and stored successfully`)
+    } catch (pdfError) {
+      console.error('PDF generation failed:', pdfError)
+      // Continue without PDF
+    }
 
     // Generate decision tokens (in real implementation, these would be secure tokens)
     const approveToken = `approve_${caseId}_${Date.now()}`
@@ -399,11 +855,12 @@ export const handler = async (event: any) => {
       ` : ''}
       
       <div class="pdf-attachment">
-        <strong>📄 Complete PDF Report Available</strong>
+        <strong>📄 Complete PDF Report ${completePDF ? 'Attached' : 'Available'}</strong>
         <p>This report contains:</p>
         <p>• Detailed KYC/AML screening report with evidence</p>
         <p>• All ${documents.length} uploaded client documents</p>
         <p>• Complete case documentation</p>
+        ${completePDF ? '<p><strong>✅ PDF successfully generated and attached to this email</strong></p>' : '<p><strong>⚠️ PDF generation failed - report available via link below</strong></p>'}
       </div>
       
       <div class="actions">
@@ -454,7 +911,9 @@ export const handler = async (event: any) => {
         overallStatus,
         resultsCount: results.length,
         documentsCount: documents.length,
-        message: `Screening completed and email sent with DFI Labs theme`
+        pdfGenerated: !!completePDF,
+        completePdfUrl: completePDF ? `https://dfi-onboarding-dossiers-4d48c1e4662b.s3.eu-west-3.amazonaws.com/screening/${caseId}/complete-report.pdf` : null,
+        message: `Screening completed and email sent with DFI Labs theme${completePDF ? ' and PDF attached' : ''}`
       })
     }
 

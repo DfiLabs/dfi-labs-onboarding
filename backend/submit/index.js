@@ -47889,6 +47889,7 @@ var handler = async (event) => {
       pepStatus,
       pepDetails,
       subscriptionBand,
+      subscriptionCurrency,
       // Individual fields
       nationality,
       // Entity fields
@@ -47935,6 +47936,7 @@ var handler = async (event) => {
       pepStatus,
       pepDetails,
       subscriptionBand,
+      subscriptionCurrency,
       // Individual fields
       ...clientType === "individual" && { nationality },
       // Entity fields
