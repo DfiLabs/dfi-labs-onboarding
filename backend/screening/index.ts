@@ -463,7 +463,7 @@ async function generateDetailedReportPDF(summary: ScreeningSummary): Promise<Buf
   doc.setFontSize(14)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2])
-  doc.text('🔍 Databases Searched', 20, yPosition)
+  doc.text('Databases Searched', 20, yPosition)
   yPosition += 15
   
   doc.setFontSize(10)
@@ -516,7 +516,7 @@ async function generateDetailedReportPDF(summary: ScreeningSummary): Promise<Buf
   doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2])
-  doc.text('📋 Search Methodology', 20, yPosition)
+  doc.text('Search Methodology', 20, yPosition)
   yPosition += 10
   
   doc.setFontSize(9)

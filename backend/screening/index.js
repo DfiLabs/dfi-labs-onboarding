@@ -84570,7 +84570,7 @@ async function generateDetailedReportPDF(summary) {
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2]);
-  doc.text("\u{1F50D} Databases Searched", 20, yPosition);
+  doc.text("Databases Searched", 20, yPosition);
   yPosition += 15;
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
@@ -84614,7 +84614,7 @@ async function generateDetailedReportPDF(summary) {
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(colors.dark[0], colors.dark[1], colors.dark[2]);
-  doc.text("\u{1F4CB} Search Methodology", 20, yPosition);
+  doc.text("Search Methodology", 20, yPosition);
   yPosition += 10;
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
