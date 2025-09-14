@@ -1,4 +1,19 @@
 AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  BucketName:
+    Type: String
+    Default: dfi-onboarding-dossiers-4d48c1e4662b
+  AllowedOrigins:
+    Type: String
+    Default: '*'
+  RecipientEmail:
+    Type: String
+    Default: contact@dfi-labs.com
+  InviteSecret:
+    Type: String
+    Default: your-secret-key-here
+    NoEcho: true
+
 Resources:
   Api:
     Type: AWS::Serverless::Api
@@ -14,6 +29,10 @@ Resources:
     Properties:
       CodeUri: presign/
       Handler: index.handler
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref BucketName
+          SIGNED_URL_TTL_SECONDS: '604800'
       Events:
         Presign:
           Type: Api
@@ -30,6 +49,12 @@ Resources:
     Properties:
       CodeUri: submit/
       Handler: index.handler
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref BucketName
+          RECIPIENT_EMAIL: !Ref RecipientEmail
+          SIGNED_URL_TTL_SECONDS: '604800'
+          INVITE_SECRET: !Ref InviteSecret
       Events:
         Submit:
           Type: Api
@@ -46,6 +71,77 @@ Resources:
               - ses:SendEmail
               - ses:SendRawEmail
             Resource: '*'
+
+  ScreeningFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: screening/
+      Handler: index.handler
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref BucketName
+          RECIPIENT_EMAIL: !Ref RecipientEmail
+      Events:
+        Screening:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /screening
+            Method: post
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref BucketName
+        - Statement:
+          - Effect: Allow
+            Action:
+              - ses:SendEmail
+              - ses:SendRawEmail
+            Resource: '*'
+
+  DecideFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: decide/
+      Handler: index.handler
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref BucketName
+          RECIPIENT_EMAIL: !Ref RecipientEmail
+      Events:
+        Decide:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /decide
+            Method: get
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref BucketName
+        - Statement:
+          - Effect: Allow
+            Action:
+              - ses:SendEmail
+              - ses:SendRawEmail
+            Resource: '*'
+
+  PortalFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: portal/
+      Handler: index.handler
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref BucketName
+      Events:
+        Portal:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /portal/{caseId}
+            Method: get
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref BucketName
 
 Outputs:
   ApiUrl:

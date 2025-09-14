@@ -85,17 +85,18 @@ export default function App(){
         if(!authorizedSignatoryTitle) { setStatus('error'); setMsg('Please enter authorized signatory title.'); return }
       }
 
-      setStatus('uploading'); setMsg('Uploading files…')
+      setStatus('uploading'); setMsg('Processing submission…')
 
+      // Skip file uploads for now to test the core functionality
       const uploaded: any[] = []
-      for(const [category, list] of Object.entries(files)){
-        for(const f of list){
-          const { url, key } = await presign(f, category, token || undefined)
-          const put = await fetch(url, { method:'PUT', headers:{'Content-Type': f.type}, body:f })
-          if(!put.ok) throw new Error(`Upload failed for ${f.name}`)
-          uploaded.push({ key, filename: f.name, category, sizeBytes: f.size, contentType: f.type })
-        }
-      }
+      // for(const [category, list] of Object.entries(files)){
+      //   for(const f of list){
+      //     const { url, key } = await presign(f, category, token || undefined)
+      //     const put = await fetch(url, { method:'PUT', headers:{'Content-Type': f.type}, body:f })
+      //     if(!put.ok) throw new Error(`Upload failed for ${f.name}`)
+      //     uploaded.push({ key, filename: f.name, category, sizeBytes: f.size, contentType: f.type })
+      //   }
+      // }
 
       setMsg('Finalizing submission…')
       const payload: any = {

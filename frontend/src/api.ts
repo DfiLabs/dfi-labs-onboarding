@@ -1,13 +1,13 @@
-export const API_BASE = import.meta.env.VITE_API_BASE as string;
+export const API_BASE = import.meta.env.VITE_API_BASE || 'https://uy9omnj0u7.execute-api.eu-west-3.amazonaws.com/prod';
 
-const SIMPLE_JSON = { 'Content-Type': 'text/plain;charset=UTF-8' }; // simple request, no preflight
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 export async function presign(file: File, category: string, inviteToken?: string){
   const body: any = { filename: file.name, contentType: file.type, category };
   if (inviteToken) body.inviteToken = inviteToken;
   const res = await fetch(`${API_BASE}/presign`, {
     method: 'POST',
-    headers: SIMPLE_JSON,
+    headers: JSON_HEADERS,
     body: JSON.stringify(body)
   });
   if(!res.ok) throw new Error(await res.text());
@@ -15,11 +15,25 @@ export async function presign(file: File, category: string, inviteToken?: string
 }
 
 export async function submit(payload: any){
+  console.log('Submitting to:', `${API_BASE}/submit`);
+  console.log('Payload:', payload);
+  
   const res = await fetch(`${API_BASE}/submit`,{
     method: 'POST',
-    headers: SIMPLE_JSON,
+    headers: JSON_HEADERS,
     body: JSON.stringify(payload)
   });
-  if(!res.ok) throw new Error(await res.text());
-  return res.json();
+  
+  console.log('Response status:', res.status);
+  console.log('Response headers:', Object.fromEntries(res.headers.entries()));
+  
+  if(!res.ok) {
+    const errorText = await res.text();
+    console.error('Error response:', errorText);
+    throw new Error(errorText);
+  }
+  
+  const result = await res.json();
+  console.log('Success result:', result);
+  return result;
 }
