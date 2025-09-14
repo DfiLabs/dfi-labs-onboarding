@@ -84464,7 +84464,12 @@ async function generateDetailedReportPDF(summary) {
     red: [231, 76, 60],
     dark: [26, 26, 26],
     light: [224, 224, 224],
-    accent: [74, 103, 65]
+    accent: [138, 43, 226],
+    // Purple
+    accent2: [75, 0, 130],
+    // Indigo
+    blue: [30, 144, 255]
+    // Dodger blue
   };
   let yPosition = 20;
   doc.setFillColor(colors.accent[0], colors.accent[1], colors.accent[2]);
@@ -84687,27 +84692,27 @@ var handler = async (event) => {
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); }
     .container { max-width: 600px; margin: 0 auto; background: rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.3); backdrop-filter: blur(10px); }
-    .header { background: linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #4a6741 100%); color: white; padding: 30px; text-align: center; }
+    .header { background: linear-gradient(135deg, #8a2be2 0%, #4b0082 50%, #1e90ff 100%); color: white; padding: 30px; text-align: center; }
     .header h1 { margin: 0; font-size: 24px; font-weight: 300; }
     .header h2 { margin: 10px 0 0 0; font-size: 16px; opacity: 0.9; }
-    .logo { font-size: 20px; font-weight: bold; color: #4a6741; margin-bottom: 10px; }
+    .logo { font-size: 20px; font-weight: bold; color: #8a2be2; margin-bottom: 10px; }
     .content { padding: 30px; }
     .status { text-align: center; margin: 20px 0; }
     .status-badge { display: inline-block; padding: 12px 24px; border-radius: 25px; font-weight: bold; color: white; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
     .status-green { background: #27ae60; }
     .status-amber { background: #f39c12; }
     .status-red { background: #e74c3c; }
-    .summary { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4a6741; }
+    .summary { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #8a2be2; }
     .summary h3 { margin: 0 0 15px 0; color: #ffffff; }
     .summary ul { margin: 0; padding-left: 20px; color: #e0e0e0; }
     .actions { text-align: center; margin: 30px 0; }
     .btn { display: inline-block; padding: 15px 30px; margin: 0 10px; text-decoration: none; border-radius: 8px; font-weight: bold; color: white; transition: all 0.3s ease; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
     .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
-    .btn-approve { background: linear-gradient(135deg, #27ae60, #2ecc71); }
-    .btn-request { background: linear-gradient(135deg, #f39c12, #e67e22); }
+    .btn-approve { background: linear-gradient(135deg, #8a2be2, #1e90ff); }
+    .btn-request { background: linear-gradient(135deg, #4b0082, #8a2be2); }
     .btn-reject { background: linear-gradient(135deg, #e74c3c, #c0392b); }
     .footer { background: rgba(0,0,0,0.2); padding: 20px; text-align: center; color: #b0b0b0; font-size: 12px; border-radius: 8px; }
-    .pdf-attachment { background: rgba(74, 103, 65, 0.1); border: 2px dashed #4a6741; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px; }
+    .pdf-attachment { background: rgba(138, 43, 226, 0.1); border: 2px dashed #8a2be2; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px; }
     .pdf-attachment strong { color: #ffffff; }
     .pdf-attachment p { color: #e0e0e0; margin: 5px 0; }
   </style>
@@ -84744,13 +84749,11 @@ var handler = async (event) => {
       </div>
       ` : ""}
       
-      <div class="pdf-attachment">
-        <strong>\u{1F4C4} Complete PDF Report ${completePDF ? "Attached" : "Available"}</strong>
-        <p>This report contains:</p>
-        <p>\u2022 Detailed KYC/AML screening report with evidence</p>
-        <p>\u2022 All ${documents.length} uploaded client documents</p>
-        <p>\u2022 Complete case documentation</p>
-        ${completePDF ? "<p><strong>\u2705 PDF successfully generated and attached to this email</strong></p>" : "<p><strong>\u26A0\uFE0F PDF generation failed - report available via link below</strong></p>"}
+      <div class="pdf-download">
+        <strong>\u{1F4C4} Complete PDF Report Generated</strong>
+        <p>Your detailed KYC/AML screening report is ready for download.</p>
+        <p><a href="https://dfi-onboarding-dossiers-4d48c1e4662b.s3.eu-west-3.amazonaws.com/screening/${summary.caseId}/complete-report.pdf" target="_blank">\u{1F4E5} Download PDF Report</a></p>
+        <p style="font-size: 12px; color: #b0b0b0;">This PDF contains detailed screening results, UBO information, and all case documentation.</p>
       </div>
       
       <div class="actions">

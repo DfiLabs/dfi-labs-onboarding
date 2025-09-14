@@ -45129,7 +45129,7 @@ var handler = async (event) => {
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); }
     .container { max-width: 600px; margin: 0 auto; background: rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.3); backdrop-filter: blur(10px); }
-    .header { background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); color: white; padding: 30px; text-align: center; }
+    .header { background: linear-gradient(135deg, #8a2be2 0%, #1e90ff 100%); color: white; padding: 30px; text-align: center; }
     .header h1 { margin: 0; font-size: 24px; font-weight: 300; }
     .logo { font-size: 20px; font-weight: bold; color: #ffffff; margin-bottom: 10px; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
     .content { padding: 30px; }
@@ -45190,7 +45190,7 @@ var handler = async (event) => {
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); }
     .container { max-width: 600px; margin: 0 auto; background: rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.3); backdrop-filter: blur(10px); }
-    .header { background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); color: white; padding: 30px; text-align: center; }
+    .header { background: linear-gradient(135deg, #4b0082 0%, #8a2be2 100%); color: white; padding: 30px; text-align: center; }
     .header h1 { margin: 0; font-size: 24px; font-weight: 300; }
     .logo { font-size: 20px; font-weight: bold; color: #ffffff; margin-bottom: 10px; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
     .content { padding: 30px; }
