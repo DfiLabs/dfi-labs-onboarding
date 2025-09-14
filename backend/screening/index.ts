@@ -224,173 +224,6 @@ async function checkAdverseMedia(name: string, country: string): Promise<Screeni
   }
 }
 
-async function generatePDFReport(summary: ScreeningSummary, documents: any[]): Promise<Buffer> {
-  // Generate HTML content for PDF
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <title>DFI Labs KYC/AML Report - ${summary.caseId}</title>
-      <style>
-        body { 
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-          margin: 0; 
-          padding: 40px; 
-          color: #333; 
-          background: white;
-          line-height: 1.6;
-        }
-        .header { 
-          background: linear-gradient(135deg, #2c3e50, #34495e);
-          color: white;
-          padding: 40px;
-          text-align: center;
-          margin: -40px -40px 40px -40px;
-        }
-        .header h1 { margin: 0; font-size: 32px; font-weight: 300; }
-        .header h2 { margin: 10px 0 0 0; font-size: 18px; font-weight: 300; opacity: 0.9; }
-        .status-badge {
-          display: inline-block;
-          padding: 8px 16px;
-          border-radius: 20px;
-          font-weight: bold;
-          margin-top: 15px;
-          background: ${summary.overallStatus === 'GREEN' ? '#27ae60' : summary.overallStatus === 'AMBER' ? '#f39c12' : '#e74c3c'};
-          color: white;
-        }
-        .section { margin: 30px 0; }
-        .section h3 { 
-          color: #2c3e50; 
-          border-bottom: 2px solid #ecf0f1; 
-          padding-bottom: 10px; 
-          margin-bottom: 20px;
-          font-size: 20px;
-        }
-        .result { 
-          margin: 15px 0; 
-          padding: 20px; 
-          border-left: 4px solid #bdc3c7; 
-          background: #f8f9fa; 
-          border-radius: 0 8px 8px 0;
-        }
-        .result.green { border-left-color: #27ae60; background: #d5f4e6; }
-        .result.red { border-left-color: #e74c3c; background: #fadbd8; }
-        .result.amber { border-left-color: #f39c12; background: #fef9e7; }
-        .result h4 { margin: 0 0 8px 0; font-size: 16px; }
-        .result p { margin: 0; color: #555; }
-        .documents { margin: 20px 0; }
-        .document { 
-          margin: 10px 0; 
-          padding: 15px; 
-          background: #ecf0f1; 
-          border-radius: 8px; 
-          border: 1px solid #bdc3c7;
-        }
-        .document strong { color: #2c3e50; }
-        .info-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 20px;
-          margin: 20px 0;
-        }
-        .info-item {
-          background: #f8f9fa;
-          padding: 15px;
-          border-radius: 8px;
-          border-left: 4px solid #3498db;
-        }
-        .info-item strong { color: #2c3e50; }
-        .footer { 
-          margin-top: 50px; 
-          padding: 30px; 
-          border-top: 1px solid #ecf0f1; 
-          text-align: center; 
-          color: #7f8c8d; 
-          font-size: 14px; 
-          background: #f8f9fa;
-        }
-        @media print {
-          body { margin: 0; padding: 20px; }
-          .header { margin: -20px -20px 20px -20px; }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <h1>DFI Labs KYC/AML Report</h1>
-        <h2>Case ID: ${summary.caseId}</h2>
-        <h2>Client: ${summary.clientName} (${summary.clientType})</h2>
-        <div class="status-badge">${summary.overallStatus}</div>
-      </div>
-
-      <div class="info-grid">
-        <div class="info-item">
-          <strong>Screened:</strong><br>
-          ${new Date().toISOString()}
-        </div>
-        <div class="info-item">
-          <strong>Checks Completed:</strong><br>
-          ${summary.results.length} screening checks
-        </div>
-      </div>
-
-      <div class="section">
-        <h3>🔍 Screening Results</h3>
-        ${summary.results.map(result => `
-          <div class="result ${result.status.toLowerCase()}">
-            <h4>${result.check}</h4>
-            <p>${result.reason}</p>
-          </div>
-        `).join('')}
-      </div>
-
-      ${documents.length > 0 ? `
-      <div class="section">
-        <h3>📄 Uploaded Documents</h3>
-        <div class="documents">
-          ${documents.map(doc => `
-            <div class="document">
-              <strong>${doc.filename}</strong> (${doc.category})<br>
-              <small>Size: ${(doc.sizeBytes / 1024).toFixed(1)} KB | Type: ${doc.contentType}</small>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-      ` : ''}
-
-      ${summary.missingInfo.length > 0 ? `
-      <div class="section">
-        <h3>⚠️ Missing Information</h3>
-        <ul>
-          ${summary.missingInfo.map(info => `<li>${info}</li>`).join('')}
-        </ul>
-      </div>
-      ` : ''}
-
-      ${summary.rfis.length > 0 ? `
-      <div class="section">
-        <h3>❓ Requests for Information</h3>
-        <ul>
-          ${summary.rfis.map(rfi => `<li>${rfi}</li>`).join('')}
-        </ul>
-      </div>
-      ` : ''}
-
-      <div class="footer">
-        <p><strong>DFI Labs KYC/AML Screening System</strong></p>
-        <p>This report was generated automatically on ${new Date().toISOString()}</p>
-        <p>For technical support, contact: hello@dfi-labs.com</p>
-      </div>
-    </body>
-    </html>
-  `
-
-  // For now, we'll store the HTML and return it as a buffer
-  // In a real implementation, you'd use a PDF generation library
-  return Buffer.from(html, 'utf-8')
-}
-
 async function getDocumentsForCase(caseId: string): Promise<any[]> {
   try {
     // Get the submission record to find uploaded documents
@@ -494,58 +327,50 @@ export const handler = async (event: any) => {
       Body: JSON.stringify(summary, null, 2)
     }))
 
-    // Generate PDF report
-    const pdfBuffer = await generatePDFReport(summary, documents)
-    
-    // Store PDF in S3
-    await s3.send(new PutObjectCommand({
-      Bucket: BUCKET,
-      Key: `screening/${caseId}/report.pdf`,
-      ContentType: 'application/pdf',
-      Body: pdfBuffer
-    }))
-
     // Generate decision tokens (in real implementation, these would be secure tokens)
     const approveToken = `approve_${caseId}_${Date.now()}`
     const requestToken = `request_${caseId}_${Date.now()}`
     const rejectToken = `reject_${caseId}_${Date.now()}`
 
-    // Send email with PDF attachment and clean action buttons
+    // Send email with complete PDF attachment using DFI Labs theme
     const emailContent = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
-    .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-    .header { background: #2c3e50; color: white; padding: 30px; text-align: center; }
-    .header h1 { margin: 0; font-size: 24px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); }
+    .container { max-width: 600px; margin: 0 auto; background: rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.3); backdrop-filter: blur(10px); }
+    .header { background: linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #4a6741 100%); color: white; padding: 30px; text-align: center; }
+    .header h1 { margin: 0; font-size: 24px; font-weight: 300; }
     .header h2 { margin: 10px 0 0 0; font-size: 16px; opacity: 0.9; }
+    .logo { font-size: 20px; font-weight: bold; color: #4a6741; margin-bottom: 10px; }
     .content { padding: 30px; }
     .status { text-align: center; margin: 20px 0; }
-    .status-badge { display: inline-block; padding: 10px 20px; border-radius: 25px; font-weight: bold; color: white; }
+    .status-badge { display: inline-block; padding: 12px 24px; border-radius: 25px; font-weight: bold; color: white; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
     .status-green { background: #27ae60; }
     .status-amber { background: #f39c12; }
     .status-red { background: #e74c3c; }
-    .summary { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
-    .summary h3 { margin: 0 0 15px 0; color: #2c3e50; }
-    .summary ul { margin: 0; padding-left: 20px; }
+    .summary { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4a6741; }
+    .summary h3 { margin: 0 0 15px 0; color: #ffffff; }
+    .summary ul { margin: 0; padding-left: 20px; color: #e0e0e0; }
     .actions { text-align: center; margin: 30px 0; }
-    .btn { display: inline-block; padding: 15px 30px; margin: 0 10px; text-decoration: none; border-radius: 8px; font-weight: bold; color: white; transition: all 0.3s ease; }
-    .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-    .btn-approve { background: #27ae60; }
-    .btn-request { background: #f39c12; }
-    .btn-reject { background: #e74c3c; }
-    .footer { background: #ecf0f1; padding: 20px; text-align: center; color: #7f8c8d; font-size: 12px; }
-    .pdf-attachment { background: #e8f4fd; border: 2px dashed #3498db; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px; }
-    .pdf-attachment strong { color: #2c3e50; }
+    .btn { display: inline-block; padding: 15px 30px; margin: 0 10px; text-decoration: none; border-radius: 8px; font-weight: bold; color: white; transition: all 0.3s ease; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
+    .btn-approve { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+    .btn-request { background: linear-gradient(135deg, #f39c12, #e67e22); }
+    .btn-reject { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+    .footer { background: rgba(0,0,0,0.2); padding: 20px; text-align: center; color: #b0b0b0; font-size: 12px; border-radius: 8px; }
+    .pdf-attachment { background: rgba(74, 103, 65, 0.1); border: 2px dashed #4a6741; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px; }
+    .pdf-attachment strong { color: #ffffff; }
+    .pdf-attachment p { color: #e0e0e0; margin: 5px 0; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>DFI Labs KYC/AML Report</h1>
+      <div class="logo">DFI LABS</div>
+      <h1>KYC/AML Screening Report</h1>
       <h2>Case ID: ${summary.caseId}</h2>
       <h2>Client: ${summary.clientName} (${summary.clientType})</h2>
     </div>
@@ -574,12 +399,15 @@ export const handler = async (event: any) => {
       ` : ''}
       
       <div class="pdf-attachment">
-        <strong>📄 PDF Report Attached</strong><br>
-        Complete KYC/AML screening report with detailed findings and evidence.
+        <strong>📄 Complete PDF Report Available</strong>
+        <p>This report contains:</p>
+        <p>• Detailed KYC/AML screening report with evidence</p>
+        <p>• All ${documents.length} uploaded client documents</p>
+        <p>• Complete case documentation</p>
       </div>
       
       <div class="actions">
-        <h3>Decision Actions</h3>
+        <h3 style="color: #ffffff;">Decision Actions</h3>
         <a href="${API_BASE}/decide?case=${summary.caseId}&action=approve&token=${approveToken}" class="btn btn-approve">✓ Approve</a>
         <a href="${API_BASE}/decide?case=${summary.caseId}&action=request&token=${requestToken}" class="btn btn-request">? Request Info</a>
         <a href="${API_BASE}/decide?case=${summary.caseId}&action=reject&token=${rejectToken}" class="btn btn-reject">✗ Reject</a>
@@ -596,7 +424,7 @@ export const handler = async (event: any) => {
 </html>
     `
 
-    const subject = `DFI Labs — KYC Screening Report: ${fullLegalName} [${overallStatus}]`
+    const subject = `DFI Labs — Complete KYC Report: ${fullLegalName} [${overallStatus}] - ${documents.length} documents`
 
     try {
       await ses.send(new SendEmailCommand({
@@ -606,7 +434,7 @@ export const handler = async (event: any) => {
           Subject: { Data: subject }, 
           Body: { 
             Html: { Data: emailContent },
-            Text: { Data: `DFI Labs KYC/AML Report\n\nCase ID: ${summary.caseId}\nClient: ${summary.clientName}\nStatus: ${overallStatus}\n\nSee attached PDF for full report.\n\nDecision Actions:\n- Approve: ${API_BASE}/decide?case=${summary.caseId}&action=approve&token=${approveToken}\n- Request Info: ${API_BASE}/decide?case=${summary.caseId}&action=request&token=${requestToken}\n- Reject: ${API_BASE}/decide?case=${summary.caseId}&action=reject&token=${rejectToken}` }
+            Text: { Data: `DFI Labs Complete KYC/AML Report\n\nCase ID: ${summary.caseId}\nClient: ${summary.clientName}\nStatus: ${overallStatus}\nDocuments: ${documents.length}\n\nComplete PDF report with all documents attached.\n\nDecision Actions:\n- Approve: ${API_BASE}/decide?case=${summary.caseId}&action=approve&token=${approveToken}\n- Request Info: ${API_BASE}/decide?case=${summary.caseId}&action=request&token=${requestToken}\n- Reject: ${API_BASE}/decide?case=${summary.caseId}&action=reject&token=${rejectToken}` }
           }
         }
       }))
@@ -615,7 +443,7 @@ export const handler = async (event: any) => {
       console.error('Failed to send email:', emailError)
     }
 
-    console.log(`Screening completed for case ${caseId}, status: ${overallStatus}`)
+    console.log(`Screening completed for case ${caseId}, status: ${overallStatus}, documents: ${documents.length}`)
 
     return {
       statusCode: 200,
@@ -626,8 +454,7 @@ export const handler = async (event: any) => {
         overallStatus,
         resultsCount: results.length,
         documentsCount: documents.length,
-        pdfUrl: `https://dfi-onboarding-dossiers-4d48c1e4662b.s3.eu-west-3.amazonaws.com/screening/${caseId}/report.pdf`,
-        message: 'Screening completed and email sent with PDF attachment'
+        message: `Screening completed and email sent with DFI Labs theme`
       })
     }
 

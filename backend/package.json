@@ -11,6 +11,7 @@
     "@aws-sdk/s3-request-presigner": "^3.637.0",
     "@aws-sdk/util-create-request": "^3.609.0",
     "jsonwebtoken": "^9.0.2",
+    "pdf-lib": "^1.17.1",
     "puppeteer": "^24.20.0",
     "uuid": "^9.0.1"
   },
