@@ -157,7 +157,7 @@ textarea {
   cursor: pointer;
 }
 .uploader::before {
-  content: "Drag & drop files here or click to browse";
+  content: "Drag & drop files here or click to browse (multiple files allowed)";
   display: block;
   margin-bottom: 8px;
 }
@@ -182,6 +182,53 @@ textarea {
   padding: 16px;
   border-radius: 10px;
   color: #991b1b;
+}
+
+/* Country Dropdown Styles */
+.country-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.country-dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0,0,0,.1);
+}
+
+.country-option {
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background-color 0.2s;
+  color: var(--fg);
+}
+
+.country-option:hover {
+  background-color: var(--input-bg);
+}
+
+.country-option:last-child {
+  border-bottom: none;
+}
+
+.country-option.no-results {
+  color: var(--muted);
+  cursor: default;
+  font-style: italic;
+}
+
+.country-option.no-results:hover {
+  background-color: transparent;
 }
 
 /* responsive */
