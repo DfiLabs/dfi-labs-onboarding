@@ -10,6 +10,7 @@ const COUNTRIES = [
   'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi',
   // C
   'Cabo Verde', 'Cambodia', 'Cameroon', 'Canada', 'Central African Republic', 'Chad', 'Chile', 'China', 'Colombia', 'Comoros', 'Congo', 'Costa Rica', 'Croatia', 'Cuba', 'Cyprus', 'Czech Republic',
+  'Cayman Islands',
   // D
   'Democratic Republic of the Congo', 'Denmark', 'Djibouti', 'Dominica', 'Dominican Republic',
   // E
@@ -402,6 +403,7 @@ export default function App(){
               value={addressSearch} 
               onChange={e => {
                 setAddressSearch(e.target.value)
+                setFullAddress(e.target.value)
                 setShowAddressDropdown(true)
               }}
               onFocus={() => setShowAddressDropdown(true)}
@@ -445,6 +447,7 @@ export default function App(){
               value={taxResidencySearch} 
               onChange={e => {
                 setTaxResidencySearch(e.target.value)
+                setTaxResidencyCountry(e.target.value)
                 setShowTaxResidencyDropdown(true)
               }}
               onFocus={() => setShowTaxResidencyDropdown(true)}
@@ -550,6 +553,7 @@ export default function App(){
                   value={nationalitySearch} 
                   onChange={e => {
                     setNationalitySearch(e.target.value)
+                    setNationality(e.target.value)
                     setShowNationalityDropdown(true)
                   }}
                   onFocus={() => setShowNationalityDropdown(true)}
@@ -704,6 +708,7 @@ export default function App(){
               value={countrySearch} 
               onChange={e => {
                 setCountrySearch(e.target.value)
+                setCountry(e.target.value)
                 setShowCountryDropdown(true)
               }}
               onFocus={() => setShowCountryDropdown(true)}
